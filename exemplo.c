@@ -54,7 +54,7 @@ int main()
 	SDL_Event event;
 	bool exit = false;
 	int x, y;
-	int screen = 0;
+	int screen = 0, last_screen = -1;
 
 	gfx_init(WINDOW_WIDTH, WINDOW_HEIGHT, "");
 	gfx_set_font_size(40);
@@ -62,11 +62,42 @@ int main()
 
 	while (!exit){
 		while(SDL_PollEvent(&event) >= 0){
-			if (event.type == SDL_QUIT)
+			if (event.type == SDL_QUIT) { 
 				exit = true;
-		
-			create_shape_choice();
-			while (screen == 0){
+				break;
+			}
+			if (last_screen != screen) {
+				if (screen == 0)
+					create_shape_choice();
+				else if (screen == 1)
+					create_recursive_choice();
+				else if (screen == 2) {
+					if (escolha == 1)
+						create_circle_screen(0, rec, WINDOW_WIDTH/2, WINDOW_HEIGHT/2, RADIUS);
+					else create_square_screen(0, rec, WINDOW_WIDTH/2, WINDOW_HEIGHT/2, 210);
+				}
+				last_screen = screen;
+
+			}
+			if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT){
+				SDL_GetMouseState(&x, &y);
+				if (screen == 0) {
+					escolha = read_shape_choice(x, y);
+					if (escolha) screen++;
+				}
+				if (screen == 1) {
+					rec = read_recursive_choice(x, y);
+					if (rec == -1)
+						screen--;	
+					else if (rec != -2) screen++;
+				}
+				if (screen == 2) {
+					if (read_return_button(x, y)){
+						screen--;
+					}
+				}
+			}
+			/*while (screen == 0){
 				
 				if(event.type == SDL_MOUSEMOTION){
 					printf("sdasdwe");
@@ -76,7 +107,7 @@ int main()
 				if (escolha != 0) screen++;
 			}
 			create_recursive_choice();
-			whi	le (screen == 1){
+			while (screen == 1){
 				if(event.type == SDL_MOUSEBUTTONDOWN){
 					SDL_GetMouseState(&x, &y);
 					rec = read_recursive_choice(x, y);
@@ -97,7 +128,8 @@ int main()
 				}
 			}
 
-		}
+		}*/
+	}
 	}
 	gfx_quit();
 		/*escolha = create_shape_choice();
