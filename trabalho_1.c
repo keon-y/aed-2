@@ -3,6 +3,7 @@
 #include <math.h>
 #include <SDL/SDL.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
@@ -18,10 +19,6 @@ typedef struct Node {
 	int height; //tamanho fixo provavelmente
 	int width;
 } NodeAvailable;
-
-typedef struct SingleNodeList {
-	struct Node *start;
-} ListAvailable;
 
 typedef struct DoubleNode {
 	int id;
@@ -42,8 +39,8 @@ void drawAvailableBlock(NodeAvailable * node) {
 	gfx_paint();
 }
 
-void printNodes(ListAvailable list){
-	NodeAvailable *ptr = list.start;
+void printNodes(NodeAvailable *start){
+	NodeAvailable *ptr = start;
 	while (ptr != NULL) {
 		printf("ADDRESS: %d  SIZE: %d \n", ptr->address, ptr->size);
 		ptr = ptr->next;
@@ -74,24 +71,27 @@ NodeAvailable *searchSingleList(int size, ListAvailable *list) {
 	NodeAvailable *node = list->start;
 }*/
 
-void insertSingleList(NodeAvailable *node, ListAvailable *list) {
-	NodeAvailable *ptr = list->start;
-	if (node->size < ptr->size || ptr == NULL) { //no menor do que o primeiro elemento da lista ou lista vazia
-		node->next = ptr == NULL ? NULL : list->start; //se nao tiver elementos na lista entao o prox do node eh nulo
-		list->start = node;
+//insere um NODE em uma lista simplesmente encadeada ordenada de forma crescente
+void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro para ponteiro em caso de precisar alterar o comeco da lista
+	NodeAvailable *ptr = *start;
+	if (!ptr || node->size < ptr->size) { //no menor do que o primeiro elemento da lista ou lista vazia
+		node->next = *start; //se nao tiver elementos na lista entao o prox do node eh nulo
+		*start = node;
 		return;
 	}
 
 	while (ptr->next != NULL) {
-		if ((ptr->next)->size > node->size) {
-			node->next = ptr->next;
-			ptr->next = node;
-		}
+		if (ptr->next->size > node->size) break;
 		ptr = ptr->next;
 	}
+	node->next = ptr->next;
 	ptr->next = node;
 
-} 
+}
+
+void deleteSingleList(int size, NodeAvailable **start) {
+	
+}
 
 
 int main()
@@ -102,19 +102,16 @@ int main()
 	scanf("%d", &memory_size);
 	
 	gfx_init(WIDTH, HEIGHT, "");
-	NodeAvailable *node1 = createSingleNode(1, 5, 100, 200);
-	NodeAvailable *node2 = createSingleNode(1, 6, 200, 200);
-	NodeAvailable *node3 = createSingleNode(1, 12, 300, 200);
-	NodeAvailable *node4 = createSingleNode(1, 2, 400, 200);
-	ListAvailable list;
-	list.start = NULL;
+	NodeAvailable *start = createSingleNode(1, 5, 100, 200);
 
-	insertSingleList(node1, &list);
-	insertSingleList(node2, &list);
-	insertSingleList(node3, &list);
-	insertSingleList(node4, &list);
-	//printNodes(list);
-	//drawAvailableBlock(node);
+	insertSingleList(createSingleNode(1, 6, 200, 200), &start);
+	insertSingleList(createSingleNode(1, 2, 300, 200), &start);
+	insertSingleList(createSingleNode(1, 77, 500, 200), &start);
+	insertSingleList(createSingleNode(1, 12, 700, 200), &start);
+	insertSingleList(createSingleNode(1, 1, 700, 200), &start);
+	insertSingleList(createSingleNode(1, 123, 700, 200), &start);
+	printNodes(start);
+	drawAvailableBlock(start);
 
 
 
