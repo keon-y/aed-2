@@ -28,11 +28,6 @@ typedef struct DoubleNode {
 	struct DoubleNode *previous;
 } NodeAllocated;
 
-//funcao para criar seta apontando para um no
-/*
-void createArrowTo(NodeAvailable * node) {
-
-} */
 
 void drawAvailableBlock(NodeAvailable * node) {
 	gfx_rectangle((*node).x - (*node).width/2, (*node).y - (*node).height/2, (*node).x + (*node).width/2, (*node).y + (*node).height/2);
@@ -65,32 +60,49 @@ NodeAvailable *createSingleNode(int address, int size, int x, int y) {
 	return node;
 }
 
-//verificar juncao de blocos
-/*
-NodeAvailable *searchSingleList(int size, ListAvailable *list) {
-	NodeAvailable *node = list->start;
-}*/
+
+//encontra um elemento pelo atributo size em uma lista ordenada, retorna o ponteiro para o elemento ou o primeiro maior (em caso de não existir)
+NodeAvailable *searchSingleList(int size, NodeAvailable *start) {
+	NodeAvailable *ptr = start;
+	
+	while (ptr->next != NULL && !(!ptr || size <= ptr->size)) { //no menor ou igual do que o primeiro elemento da lista ou lista vazia
+		if (ptr->next->size > size) break;
+		ptr = ptr->next;
+	}
+	return ptr;
+}
 
 //insere um NODE em uma lista simplesmente encadeada ordenada de forma crescente
 void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro para ponteiro em caso de precisar alterar o comeco da lista
-	NodeAvailable *ptr = *start;
-	if (!ptr || node->size < ptr->size) { //no menor do que o primeiro elemento da lista ou lista vazia
-		node->next = *start; //se nao tiver elementos na lista entao o prox do node eh nulo
-		*start = node;
-		return;
-	}
+	NodeAvailable *ptr = searchSingleList(node->size, *start);
 
-	while (ptr->next != NULL) {
-		if (ptr->next->size > node->size) break;
-		ptr = ptr->next;
-	}
-	node->next = ptr->next;
-	ptr->next = node;
+	node->next = (!ptr || node->size < ptr->size) ? ptr : ptr->next;
+	if (ptr == *start && node->size < ptr->size) 
+		*start = node;
+	else ptr->next = node;
 
 }
 
 void deleteSingleList(int size, NodeAvailable **start) {
-	
+
+	NodeAvailable *ptr = *start, *prev = NULL;
+	if (!ptr) return;
+	while (ptr != NULL) {
+		if (size <= ptr->size) break;
+		prev = ptr;
+		ptr = ptr->next;
+	}
+
+	if (ptr->size < size) //impossivel alocar
+		return;
+
+	if (prev)
+		prev->next = ptr->next;
+	else *start = ptr->next;
+
+	if (ptr->size != size) //cria um novo bloco caso o tamanho da memoria nao seja exatamente igual
+		insertSingleList(createSingleNode(1, ptr->size - size, 200, 200), start); //testar em caso de start mudar
+	free(ptr); //libera a memoria
 }
 
 
@@ -102,7 +114,9 @@ int main()
 	scanf("%d", &memory_size);
 	
 	gfx_init(WIDTH, HEIGHT, "");
-	NodeAvailable *start = createSingleNode(1, 5, 100, 200);
+	
+	NodeAvailable *start;
+	start = createSingleNode(1, 5, 100, 200);
 
 	insertSingleList(createSingleNode(1, 6, 200, 200), &start);
 	insertSingleList(createSingleNode(1, 2, 300, 200), &start);
@@ -110,7 +124,18 @@ int main()
 	insertSingleList(createSingleNode(1, 12, 700, 200), &start);
 	insertSingleList(createSingleNode(1, 1, 700, 200), &start);
 	insertSingleList(createSingleNode(1, 123, 700, 200), &start);
+	insertSingleList(createSingleNode(1, 3123, 700, 200), &start);
+	insertSingleList(createSingleNode(1, 0, 700, 200), &start);
+
+	
+
 	printNodes(start);
+	printf("\n");
+deleteSingleList(0, &start);
+deleteSingleList(12, &start);
+deleteSingleList(1000, &start);
+	printNodes(start);
+
 	drawAvailableBlock(start);
 
 
