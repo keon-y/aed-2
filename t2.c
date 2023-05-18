@@ -1,4 +1,4 @@
-#include "../gfx/gfx.h"
+#include "gfx/gfx.h"
 #include <stdio.h>  /* printf */
 #include <math.h>
 #include <SDL/SDL.h>
@@ -38,6 +38,8 @@ NodeAllocated *createDoubleNode(int start, int end);
 void printDoubleNodes(NodeAllocated *start);
 void insertDoublyList(NodeAllocated *node, NodeAllocated **head);
 void removeDoublyList (int id, NodeAllocated **head, NodeAvailable **available_start);
+void drawMainScreen();
+int getPercentAllocated(int, NodeAllocated *);
 
 int main()
 {
@@ -55,6 +57,10 @@ int main()
 	int escolha;
 	while (!exit) {
 		system("clear");
+		gfx_clear();
+
+		drawMainScreen(getPercentAllocated(memory_size, start_allocated));
+
 		printf("Disponiveis:\n");
 		printSingleNodes(start_available);
 		printf("\nAlocados\n");
@@ -86,6 +92,62 @@ int main()
 
 	gfx_quit();
 	return 0;
+}
+
+
+int getPercentAllocated(int m, NodeAllocated *head) {
+	NodeAllocated *ptr = head;
+	int sum = 0;
+	while (ptr) {
+		sum += (ptr->address_end - ptr->address_start + 1);
+		ptr = ptr->next;
+	}
+	return sum/(m*1.0)*100;
+}
+
+void drawMainScreen(int porcent){
+	const int offset = 60; //distancia em pixels entre a parede e a borda do rect
+	const int size = 200;
+	int lenght = snprintf(NULL, 0, "%d", porcent);
+	char *str = malloc(lenght + 1);
+	snprintf(str, lenght + 1, "%d", porcent);
+	char txt[30] = "Memoria em uso: ";
+	strcat(txt, str);
+	strcat(txt, "%");
+
+	gfx_rectangle(0 + offset, HEIGHT/2 - 100 - size/2, WIDTH - offset, HEIGHT/2  - 100 + size/2);
+	gfx_set_color(124 + porcent, 252 - porcent * 2, 0); //verde
+	gfx_set_font_size(30);
+	gfx_text(WIDTH/2 - 150, HEIGHT/2 - 250, txt);
+	for (int i = 0; i < porcent; i++) {
+		const int memoryOffset = 4;
+		const int memoryWidth = (WIDTH - 2 * offset - 400) * 0.01; // tamanho individual de cada memoria
+		gfx_filled_rectangle(0 + offset + memoryOffset + (memoryWidth + memoryOffset) * i, 
+						HEIGHT/2 - 100 - size/2 + 5,
+		 			 	offset + memoryWidth + memoryOffset +(memoryWidth + memoryOffset) * i,
+						HEIGHT / 2 - 100 + size/2 - 5);
+	}
+	gfx_set_color(255,255,255);
+	
+
+	const int distanceFromBorder = 200;
+	const int y = 550;
+	const int distanceShadow = 30;
+	const int sizeButton = 90;
+	//botão memorias 
+	gfx_filled_rectangle(distanceFromBorder + distanceShadow -sizeButton, y - sizeButton/2 + distanceShadow/2, distanceFromBorder + distanceShadow + sizeButton, y +sizeButton/2+distanceShadow/2);
+	gfx_filled_rectangle(WIDTH - (distanceFromBorder + distanceShadow) - sizeButton, y - sizeButton/2 + distanceShadow/2, WIDTH - (distanceFromBorder + distanceShadow ) + sizeButton, y +sizeButton/2+distanceShadow/2);
+	gfx_set_color(0,0,0);
+	gfx_filled_rectangle(distanceFromBorder  -sizeButton, y - sizeButton/2, distanceFromBorder  + sizeButton, y +sizeButton/2);
+	gfx_filled_rectangle(WIDTH - (distanceFromBorder ) - sizeButton, y - sizeButton/2, WIDTH - (distanceFromBorder  ) + sizeButton, y +sizeButton/2);
+	gfx_set_color(255, 255, 255);
+	gfx_rectangle(distanceFromBorder  -sizeButton, y - sizeButton/2, distanceFromBorder  + sizeButton, y +sizeButton/2);
+	gfx_rectangle(WIDTH - (distanceFromBorder ) - sizeButton, y - sizeButton/2, WIDTH - (distanceFromBorder  ) + sizeButton, y +sizeButton/2);
+	//texto memorias
+	gfx_set_font_size(30);
+	gfx_text(distanceFromBorder - sizeButton/2 - 30, y - sizeButton/2 + 20, "Disponiveis");
+	gfx_text(WIDTH - distanceFromBorder - sizeButton/2 - 20, y-sizeButton/2+20, "Alocadas");
+	gfx_paint();
 }
 
 
@@ -131,8 +193,25 @@ void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro p
 		return;
 	}
 
+	while (ptr) {
+		if (ptr->address + ptr->size == node->address || node->address + node->size == ptr->address) {
+			node->address = ptr->address + ptr->size == node->address ? ptr->address : node->address;
+			node->size = node->size + ptr->size;
+			NodeAvailable *aux = ptr;
+			ptr = ptr->next;
+			removeSingleList(aux->size, start, NULL, 0);
+			continue;
+		}
+		ptr = ptr->next;
+	}
+	ptr = *start;
+	if (!ptr) { //se juntou com um bloco a lista tornou-se vazia
+		*start = node;
+		return;
+	}
 	while (ptr->next != NULL && ptr->next->size < node->size) 
 		ptr = ptr->next;
+	
 	
 	if (!ptr->next) {//ultimo elemento da lista
 		ptr->next = node;
