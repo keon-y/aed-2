@@ -23,10 +23,70 @@ typedef struct Node {
 typedef struct DoubleNode {
 	int id;
 	int address_start;
-	int address_finish;
+	int address_end;
 	struct DoubleNode *next;
 	struct DoubleNode *previous;
 } NodeAllocated;
+
+
+void printSingleNodes(NodeAvailable *start);
+NodeAvailable *createSingleNode(int address, int size, int x, int y);
+NodeAvailable *searchSingleList(int size, NodeAvailable *start);
+void insertSingleList(NodeAvailable *node, NodeAvailable **start);
+void removeSingleList(int size, NodeAvailable **start, NodeAllocated **start_allocated, int type);
+NodeAllocated *createDoubleNode(int start, int end);
+void printDoubleNodes(NodeAllocated *start);
+void insertDoublyList(NodeAllocated *node, NodeAllocated **head);
+void removeDoublyList (int id, NodeAllocated **head, NodeAvailable **available_start);
+
+int main()
+{
+	// inicializacao da Memoria
+	int memory_size;
+	printf("Informe M: ");
+	scanf("%d", &memory_size);
+	
+	gfx_init(WIDTH, HEIGHT, "");
+	
+	NodeAvailable *start_available = createSingleNode(0, memory_size, 0, 0);
+	NodeAllocated *start_allocated = NULL;
+
+	int exit = 0;
+	int escolha;
+	while (!exit) {
+		system("clear");
+		printf("Disponiveis:\n");
+		printSingleNodes(start_available);
+		printf("\nAlocados\n");
+		printDoubleNodes(start_allocated);
+
+		printf("\n\n1. Alocar\n2. Desalocar\n3. Sair\n--> ");
+		scanf("%d", &escolha);
+		if (escolha == 1) {
+			int size;
+			printf("Tamanho da alocacao: ");
+			scanf("%d", &size);
+
+			removeSingleList(size, &start_available, &start_allocated, 1);
+		}
+		else if (escolha == 2) {
+			int id;
+			printf("ID da memoria: ");
+			scanf("%d", &id);
+
+			removeDoublyList(id, &start_allocated, &start_available);
+		}
+		else 
+			exit = 1;
+		
+	}
+
+
+
+
+	gfx_quit();
+	return 0;
+}
 
 
 void drawAvailableBlock(NodeAvailable * node) {
@@ -34,7 +94,7 @@ void drawAvailableBlock(NodeAvailable * node) {
 	gfx_paint();
 }
 
-void printNodes(NodeAvailable *start){
+void printSingleNodes(NodeAvailable *start){
 	NodeAvailable *ptr = start;
 	while (ptr != NULL) {
 		printf("ADDRESS: %d  SIZE: %d \n", ptr->address, ptr->size);
@@ -61,87 +121,138 @@ NodeAvailable *createSingleNode(int address, int size, int x, int y) {
 }
 
 
-//encontra um elemento pelo atributo size em uma lista ordenada, retorna o ponteiro para o elemento ou o primeiro maior (em caso de não existir)
-NodeAvailable *searchSingleList(int size, NodeAvailable *start) {
-	NodeAvailable *ptr = start;
-	
-	while (ptr->next != NULL && !(!ptr || size <= ptr->size)) { //no menor ou igual do que o primeiro elemento da lista ou lista vazia
-		if (ptr->next->size > size) break;
-		ptr = ptr->next;
-	}
-	return ptr;
-}
 
 //insere um NODE em uma lista simplesmente encadeada ordenada de forma crescente
 void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro para ponteiro em caso de precisar alterar o comeco da lista
-	NodeAvailable *ptr = searchSingleList(node->size, *start);
+	NodeAvailable *ptr = *start;
 
-	node->next = (!ptr || node->size < ptr->size) ? ptr : ptr->next;
-	if (ptr == *start && node->size < ptr->size) 
+	if (!ptr) {
 		*start = node;
-	else ptr->next = node;
+		return;
+	}
+
+	while (ptr->next != NULL && ptr->next->size < node->size) 
+		ptr = ptr->next;
+	
+	if (!ptr->next) {//ultimo elemento da lista
+		ptr->next = node;
+		return;
+	}
+
+
+
+	node->next = ptr->next;
+	//TESTAR se mudar o inicio da lista da segmentation fault
+	
+	ptr->next = node;
 
 }
 
-void deleteSingleList(int size, NodeAvailable **start) {
+void removeSingleList(int size, NodeAvailable **start, NodeAllocated **start_allocated, int type) {
 
 	NodeAvailable *ptr = *start, *prev = NULL;
 	if (!ptr) return;
-	while (ptr != NULL) {
-		if (size <= ptr->size) break;
+	while (ptr != NULL && !(size <= ptr->size)) {
 		prev = ptr;
 		ptr = ptr->next;
 	}
-
-	if (ptr->size < size) //impossivel alocar
+	//testar se ptr->size < size eh realmente necessario na condicao
+	if (!ptr || ptr->size < size) //impossivel alocar (percorreu a lista toda)
 		return;
 
-	if (prev)
+	if (prev) //se nao tiver prev ptr vai ser o primeiro elemento, portanto muda o start
 		prev->next = ptr->next;
 	else *start = ptr->next;
-
-	if (ptr->size != size) //cria um novo bloco caso o tamanho da memoria nao seja exatamente igual
-		insertSingleList(createSingleNode(1, ptr->size - size, 200, 200), start); //testar em caso de start mudar
+	//TESTAR o novo endereco inicial
+	if (type) {
+		if (ptr->size != size) //cria um novo bloco caso o tamanho da memoria nao seja exatamente igual
+			insertSingleList(createSingleNode(ptr->address + size, ptr->size - size, 200, 200), start);
+		insertDoublyList(createDoubleNode(ptr->address, ptr->address + size - 1), start_allocated);
+	}
 	free(ptr); //libera a memoria
 }
 
+//criar
+NodeAllocated *createDoubleNode(int start, int end){
+	static int id = 0; //id unico que apenas aumenta a cada nova alocacao
+	NodeAllocated *node = malloc(sizeof(NodeAllocated));
+	node->id = id;
+	node->address_start = start;
+	node->address_end = end;
+	node->next = NULL;
+	node->previous = NULL;
+	id++;
+	return node;
+}
 
-int main()
-{
-	// inicializacao da Memoria
-	int memory_size;
-	printf("Informe M: ");
-	scanf("%d", &memory_size);
+//printar
+void printDoubleNodes(NodeAllocated *start){
+	NodeAllocated *ptr = start;
+	while (ptr){
+		printf("ID: %d, ADDRESS START: %d, ADDRESS END: %d\n", ptr->id, ptr->address_start, ptr->address_end);
+		ptr = ptr->next;
+	}
+}
+
+//adicionar
+void insertDoublyList(NodeAllocated *node, NodeAllocated **head) {
+	if (!(*head)) { //lista vazia
+		*head = node;
+		return;
+	}
+
+	NodeAllocated *ptr = *head;
+	if (ptr->id > node->id) { //inserir no comeco caso o primeiro elemento seja maior que node
+		ptr->previous = node;
+		node->next = ptr;
+		*head = node;
+		return;
+	}
+
+	while (ptr->next != NULL && !((ptr->next->id > node->id))) 
+		ptr = ptr->next;
 	
-	gfx_init(WIDTH, HEIGHT, "");
+	NodeAllocated *aux = ptr->next;
+	ptr->next = node;
+	node->previous = ptr;
+	node->next = aux;
+	if (aux) //caso for o ultimo elemento, aux nao vai existir e acessara um endereco invalido
+		aux->previous = node;
+
+}
+
+void removeDoublyList (int id, NodeAllocated **head, NodeAvailable **available_start) {
+	if (!(*head)) return; //impossivel remover de lista vazia
 	
-	NodeAvailable *start;
-	start = createSingleNode(1, 5, 100, 200);
+	NodeAllocated *ptr = *head;
+	if (ptr->id == id) { //se o no a ser removido eh o primeiro
+		if (ptr->next) //se for elemento unico da erro
+			ptr->next->previous = NULL;
+		*head = ptr->next;
 
-	insertSingleList(createSingleNode(1, 6, 200, 200), &start);
-	insertSingleList(createSingleNode(1, 2, 300, 200), &start);
-	insertSingleList(createSingleNode(1, 77, 500, 200), &start);
-	insertSingleList(createSingleNode(1, 12, 700, 200), &start);
-	insertSingleList(createSingleNode(1, 1, 700, 200), &start);
-	insertSingleList(createSingleNode(1, 123, 700, 200), &start);
-	insertSingleList(createSingleNode(1, 3123, 700, 200), &start);
-	insertSingleList(createSingleNode(1, 0, 700, 200), &start);
+		//voltar para a lista de memoria desalocada
+		insertSingleList(
+			createSingleNode(ptr->address_start, ptr->address_end - ptr->address_start + 1, 0, 0),
+			available_start);
 
-	
+		free(ptr);
+		return;
+	}
 
-	printNodes(start);
-	printf("\n");
-deleteSingleList(0, &start);
-deleteSingleList(12, &start);
-deleteSingleList(1000, &start);
-	printNodes(start);
+	while (ptr != NULL && ptr->id != id) 
+		ptr = ptr->next;
 
-	drawAvailableBlock(start);
+	if(ptr && ptr->id == id) {
+		ptr->previous->next = ptr->next;
+		if (ptr->next) //o primeiro elemento sempre eh checado, falta checar o ultimo
+			ptr->next->previous = ptr->previous;
 
+		insertSingleList(
+			createSingleNode(ptr->address_start, ptr->address_end - ptr->address_start + 1, 0, 0),
+			available_start);
 
-
-
-	sleep(10);
-	gfx_quit();
-	return 0;
+		free(ptr);
+		return;
+	}
+	printf("Valor inexistente na lista!\n");
 }
