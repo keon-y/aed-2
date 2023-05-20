@@ -46,6 +46,7 @@ int main()
 	
 	NodeAvailable *start_available = createSingleNode(0, memory_size);
 	NodeAllocated *start_allocated = NULL;
+	SDL_Event event;
 
 	int exit = 0;
 	int escolha;
@@ -128,19 +129,29 @@ void drawMainScreen(int porcent){
 	const int y = 550;
 	const int distanceShadow = 30;
 	const int sizeButton = 90;
-	//botão memorias 
+	//botão memorias
+	
+	//sombras brancas
 	gfx_filled_rectangle(distanceFromBorder + distanceShadow -sizeButton, y - sizeButton/2 + distanceShadow/2, distanceFromBorder + distanceShadow + sizeButton, y +sizeButton/2+distanceShadow/2);
 	gfx_filled_rectangle(WIDTH - (distanceFromBorder + distanceShadow) - sizeButton, y - sizeButton/2 + distanceShadow/2, WIDTH - (distanceFromBorder + distanceShadow ) + sizeButton, y +sizeButton/2+distanceShadow/2);
+	gfx_filled_rectangle(WIDTH/2 - sizeButton - 10, y - sizeButton/2 + distanceShadow/2, WIDTH/2 + sizeButton + 10, y +sizeButton/2+distanceShadow/2);
 	gfx_set_color(0,0,0);
+
+	//preenchimento preto
 	gfx_filled_rectangle(distanceFromBorder  -sizeButton, y - sizeButton/2, distanceFromBorder  + sizeButton, y +sizeButton/2);
 	gfx_filled_rectangle(WIDTH - (distanceFromBorder ) - sizeButton, y - sizeButton/2, WIDTH - (distanceFromBorder  ) + sizeButton, y +sizeButton/2);
+	gfx_filled_rectangle(WIDTH/2 - sizeButton, y - sizeButton/2, WIDTH/2 + sizeButton, y +sizeButton/2);
 	gfx_set_color(255, 255, 255);
+
+	//contorno branco
 	gfx_rectangle(distanceFromBorder  -sizeButton, y - sizeButton/2, distanceFromBorder  + sizeButton, y +sizeButton/2);
 	gfx_rectangle(WIDTH - (distanceFromBorder ) - sizeButton, y - sizeButton/2, WIDTH - (distanceFromBorder  ) + sizeButton, y +sizeButton/2);
+	gfx_rectangle(WIDTH/2 - sizeButton, y - sizeButton/2, WIDTH/2 + sizeButton, y +sizeButton/2);
 	//texto memorias
 	gfx_set_font_size(30);
 	gfx_text(distanceFromBorder - sizeButton/2 - 30, y - sizeButton/2 + 20, "Disponiveis");
 	gfx_text(WIDTH - distanceFromBorder - sizeButton/2 - 20, y-sizeButton/2+20, "Alocadas");
+	gfx_text(WIDTH/2 - 80, y-sizeButton/2+20, "Mapa Geral");
 	gfx_paint();
 }
 
