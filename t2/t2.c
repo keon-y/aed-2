@@ -12,12 +12,6 @@ typedef struct Node {
 	int address; 
 	int size; //b
 	struct Node *next;
-
-	//fazer funcao para calcular a pos x e y quando mais elementos entram na lista
-	int x; //ponto central X
-	int y; //ponto central Y
-	int height; //tamanho fixo provavelmente
-	int width;
 } NodeAvailable;
 
 typedef struct DoubleNode {
@@ -30,7 +24,7 @@ typedef struct DoubleNode {
 
 
 void printSingleNodes(NodeAvailable *start);
-NodeAvailable *createSingleNode(int address, int size, int x, int y);
+NodeAvailable *createSingleNode(int address, int size);
 NodeAvailable *searchSingleList(int size, NodeAvailable *start);
 void insertSingleList(NodeAvailable *node, NodeAvailable **start);
 void removeSingleList(int size, NodeAvailable **start, NodeAllocated **start_allocated, int type);
@@ -50,7 +44,7 @@ int main()
 	
 	gfx_init(WIDTH, HEIGHT, "");
 	
-	NodeAvailable *start_available = createSingleNode(0, memory_size, 0, 0);
+	NodeAvailable *start_available = createSingleNode(0, memory_size);
 	NodeAllocated *start_allocated = NULL;
 
 	int exit = 0;
@@ -150,12 +144,6 @@ void drawMainScreen(int porcent){
 	gfx_paint();
 }
 
-
-void drawAvailableBlock(NodeAvailable * node) {
-	gfx_rectangle((*node).x - (*node).width/2, (*node).y - (*node).height/2, (*node).x + (*node).width/2, (*node).y + (*node).height/2);
-	gfx_paint();
-}
-
 void printSingleNodes(NodeAvailable *start){
 	NodeAvailable *ptr = start;
 	while (ptr != NULL) {
@@ -167,18 +155,11 @@ void printSingleNodes(NodeAvailable *start){
 
 
 //lista simplesmente encadeada
-NodeAvailable *createSingleNode(int address, int size, int x, int y) {
+NodeAvailable *createSingleNode(int address, int size) {
 	NodeAvailable *node = (NodeAvailable*)malloc(sizeof(NodeAvailable));
 	node->address = address;
 	node->size = size;
 	node->next = NULL;
-	
-	//a funcao de tamanho provavelmente entra aqui (calculo usando a variavel size)
-	node->height = 100;
-	node->width = 300;
-	node->x = x;
-	node->y = y;
-
 	return node;
 }
 
@@ -193,7 +174,7 @@ void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro p
 		return;
 	}
 
-	while (ptr) {
+	while (ptr) { //checar se tem alguma juncao
 		if (ptr->address + ptr->size == node->address || node->address + node->size == ptr->address) {
 			node->address = ptr->address + ptr->size == node->address ? ptr->address : node->address;
 			node->size = node->size + ptr->size;
@@ -205,7 +186,7 @@ void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro p
 		ptr = ptr->next;
 	}
 	ptr = *start;
-	if (!ptr) { //se juntou com um bloco a lista tornou-se vazia
+	if (!ptr) { //se juntou com um bloco unico, portanto a lista tornou-se vazia
 		*start = node;
 		return;
 	}
@@ -245,7 +226,7 @@ void removeSingleList(int size, NodeAvailable **start, NodeAllocated **start_all
 	//TESTAR o novo endereco inicial
 	if (type) {
 		if (ptr->size != size) //cria um novo bloco caso o tamanho da memoria nao seja exatamente igual
-			insertSingleList(createSingleNode(ptr->address + size, ptr->size - size, 200, 200), start);
+			insertSingleList(createSingleNode(ptr->address + size, ptr->size - size), start);
 		insertDoublyList(createDoubleNode(ptr->address, ptr->address + size - 1), start_allocated);
 	}
 	free(ptr); //libera a memoria
@@ -311,7 +292,7 @@ void removeDoublyList (int id, NodeAllocated **head, NodeAvailable **available_s
 
 		//voltar para a lista de memoria desalocada
 		insertSingleList(
-			createSingleNode(ptr->address_start, ptr->address_end - ptr->address_start + 1, 0, 0),
+			createSingleNode(ptr->address_start, ptr->address_end - ptr->address_start + 1),
 			available_start);
 
 		free(ptr);
@@ -327,7 +308,7 @@ void removeDoublyList (int id, NodeAllocated **head, NodeAvailable **available_s
 			ptr->next->previous = ptr->previous;
 
 		insertSingleList(
-			createSingleNode(ptr->address_start, ptr->address_end - ptr->address_start + 1, 0, 0),
+			createSingleNode(ptr->address_start, ptr->address_end - ptr->address_start + 1),
 			available_start);
 
 		free(ptr);
