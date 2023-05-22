@@ -34,11 +34,13 @@ void insertDoublyList(NodeAllocated *node, NodeAllocated **head);
 void removeDoublyList (int id, NodeAllocated **head, NodeAvailable **available_start);
 void drawMainScreen();
 int getPercentAllocated(int, NodeAllocated *);
-
+void drawScreen(int, int*, int, NodeAllocated *, NodeAvailable *);
 int main()
 {
 	// inicializacao da Memoria
 	int memory_size;
+	int screen = 0;
+	int last_screen = -1;
 	printf("Informe M: ");
 	scanf("%d", &memory_size);
 	
@@ -46,40 +48,86 @@ int main()
 	
 	NodeAvailable *start_available = createSingleNode(0, memory_size);
 	NodeAllocated *start_allocated = NULL;
-	SDL_Event event;
+	//SDL_Event event;
 
-	int exit = 0;
+	
+
+	bool exit = false;
 	int escolha;
+	//bool mousedown = false;
+	//int x, y;
 	while (!exit) {
-		system("clear");
-		gfx_clear();
+		//while(SDL_PollEvent(&event) >= 0){
 
-		drawMainScreen(getPercentAllocated(memory_size, start_allocated));
+			/*if (event.type == SDL_QUIT ) { 
+				exit = true;
+				break;
+			}*/
+			
+			if (last_screen != screen) 
+				drawScreen(screen, &last_screen, memory_size, start_allocated, start_available);
+			
+			/*if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)
+				mousedown = true;
+			
+			if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT && mousedown){
+				SDL_GetMouseState(&x, &y);
+				if (screen == 0) {
+					printf("x: %d y: %d\n", x, y);
+				}
+				mousedown = false;
+			}*/
+			
+			//printf("state : %ui\n", SDL_GetAppState());
 
-		printf("Disponiveis:\n");
-		printSingleNodes(start_available);
-		printf("\nAlocados\n");
-		printDoubleNodes(start_allocated);
+			printf("Disponiveis:\n");
+			printSingleNodes(start_available);
+			printf("\nAlocados\n");
+			printDoubleNodes(start_allocated);
 
-		printf("\n\n1. Alocar\n2. Desalocar\n3. Sair\n--> ");
-		scanf("%d", &escolha);
-		if (escolha == 1) {
-			int size;
-			printf("Tamanho da alocacao: ");
-			scanf("%d", &size);
+			printf("\n\n1. Alocar\n2. Desalocar\n3. Tela inicial\n4. Ver disponiveis\n5. Ver mapa geral\n6. Ver alocados \n7. Sair\n--> ");
+			scanf("%d", &escolha);
 
-			removeSingleList(size, &start_available, &start_allocated, 1);
-		}
-		else if (escolha == 2) {
-			int id;
-			printf("ID da memoria: ");
-			scanf("%d", &id);
+			
+			//nao da pra usar um switch case pq tem o break do final
+			if (escolha == 1) {
+				int size;
+				printf("Tamanho da alocacao: ");
+				scanf("%d", &size);
+				removeSingleList(size, &start_available, &start_allocated, 1);
 
-			removeDoublyList(id, &start_allocated, &start_available);
-		}
-		else 
-			exit = 1;
-		
+				drawScreen(screen, &last_screen, memory_size, start_allocated, start_available);
+			}
+			else if (escolha == 2) {
+				int id;
+				printf("ID da memoria: ");
+				scanf("%d", &id);
+				removeDoublyList(id, &start_allocated, &start_available);
+
+				drawScreen(screen, &last_screen, memory_size, start_allocated, start_available);
+			}
+			else if (escolha == 3) { //tela inicial
+				screen = 0;
+				
+			}
+			else if (escolha == 4) { //tela disponiveis
+				screen = 1;
+				
+			}
+			else if (escolha == 5) {
+				screen = 2;
+				
+			}
+			else if (escolha == 6) {
+				screen = 3;
+				
+			}
+			else if (escolha == 7){
+				exit = true;
+				break;
+			}
+			else printf("Escolha inexistente!\n");
+		//}
 	}
 
 
@@ -94,10 +142,148 @@ int getPercentAllocated(int m, NodeAllocated *head) {
 	NodeAllocated *ptr = head;
 	int sum = 0;
 	while (ptr) {
-		sum += (ptr->address_end - ptr->address_start + 1);
+		sum += (ptr->address_end - ptr->address_start);
 		ptr = ptr->next;
 	}
 	return sum/(m*1.0)*100;
+}
+//left_to_left: se a flecha vai sair da esquerda e apontar para a esquerda, como em casos de apontar para a linha de baixo ou de cima
+//left: se a flecha aponta para a esquerda
+void drawArrowTo(int x_0, int y_0, int x, int y, int left_to_left) {
+	if (left_to_left){
+		gfx_line(x, y, x + 10, y - 8);
+		gfx_line(x, y, x + 10, y + 8);
+	}
+	else{
+		gfx_line(x, y, x - 10, y - 8);
+		gfx_line(x, y, x - 10, y + 8);
+	}
+	if (y_0 == y) {//apenas uma flecha reta
+		gfx_line(x_0, y_0, x, y);
+		return;
+	}
+	if (left_to_left) {
+		gfx_line(x_0, y_0, x_0 + (WIDTH - x_0)/2, y_0);
+		gfx_line(x_0 + (WIDTH - x_0)/2, y_0, x_0 + (WIDTH - x_0)/2, y);
+		gfx_line(x_0 + (WIDTH - x_0)/2, y, x, y);
+	}
+	else {
+		gfx_line(x_0, y_0, x_0 - (x_0)/2, y_0);
+		gfx_line(x_0 - (x_0)/2, y_0, x_0 - (x_0)/2, y);
+		gfx_line(x_0 - (x_0)/2, y, x, y);
+	}
+
+	
+}
+
+void drawAvailableScreen(NodeAvailable *start_available){
+	NodeAvailable *ptr = start_available;
+	if (!ptr) return;
+	gfx_set_font_size(13);
+	int counter = 0;
+	int total = 0; //daria pra fazer uma variavel estatica
+	int distanceNodes = 50; //cada no ficara a 50px de distancia um do outro
+	int nodeWidth = 140; 
+	int nodeHeight = 80; //altura fixa
+	int x;
+	int y = HEIGHT/2;
+	int max_per_line = WIDTH/(nodeWidth + distanceNodes);
+	int total_lines;
+	int next_rect_width = nodeWidth/5;
+	int old_x = 0;
+	int old_y = 0;
+	int next_rect_x;
+	while (ptr){
+		total++; //calcular o total eh importante para saber a posicao ideal de cada elemento
+		ptr = ptr->next;
+	}
+	total_lines = ((total-1)/max_per_line); //se for um numero quebrado eh arredondado pra baixo, 
+	//portanto se total_lines * max_per_line vai ser menor do que um elemento SE esse elemento estiver em uma linha nao completa
+	y = HEIGHT/2 - total_lines * (nodeHeight/2 + distanceNodes/2);
+	
+
+	
+	ptr = start_available;
+	while (ptr) {
+		int isOddLine = (counter / max_per_line) % 2 == 1;
+		if (counter % max_per_line == 0) {
+			if (isOddLine)
+				x = counter + 1< total_lines * max_per_line ? 
+				WIDTH/2 + (distanceNodes/2 + nodeWidth/2) * (max_per_line - 1) : 
+				WIDTH/2 + (distanceNodes/2 + nodeWidth/2) * (total - counter - 1);
+			else 
+				x = counter + 1 < total_lines * max_per_line ? 
+				WIDTH/2 - (distanceNodes/2 + nodeWidth/2) * (max_per_line - 1) : 
+				WIDTH/2 - (distanceNodes/2 + nodeWidth/2) * (total - counter - 1);
+			if (counter) //na primeira iteracao nao fazer
+			y += nodeHeight + distanceNodes;
+		}
+
+		gfx_rectangle(x - nodeWidth/2, 
+		y - nodeHeight/2, 
+		x + nodeWidth/2, 
+		y + nodeHeight/2);
+
+		
+		//retangulo menor de onde sai a flecha pro prox
+		int multiplier = isOddLine ? -1 : 1;
+		next_rect_x = isOddLine ? x - nodeWidth/2: x + nodeWidth/2;
+		gfx_rectangle(next_rect_x - (next_rect_width * multiplier),
+		y - nodeHeight/2, 
+		next_rect_x, 
+		y + nodeHeight/2);
+
+		char endereco[30] = "End. inicial: ";
+		char num_endereco[11];
+		sprintf(num_endereco, "%d", ptr->address);
+		strcat(endereco, num_endereco);
+		char tamanho[20] = "Tamanho: ";
+		char num_tamanho[11];
+		sprintf(num_tamanho, "%d", ptr->size);
+		strcat(tamanho, num_tamanho);
+		
+		gfx_text(x - nodeWidth/2 + 9 + (30 * isOddLine), y + nodeHeight/2 - 30, endereco);
+		gfx_text(x - nodeWidth/2 + 9 + (30 * isOddLine), y - nodeHeight/2 + 20, tamanho);
+
+		if (counter) {
+			/*	se for um ultimo elemento:
+					par: ligar x antigo + metade com x novo + metade
+					impar: ligar x antigo - metade do tamanho com x antigo + metade
+				se for uma linha par ligar o x antigo + metade do tamanho com x novo - metade do tamanho
+				se for uma linha impar ligar o x antigo - metade do tamanho com x novo + metade do tamanho
+
+			*/
+			if (counter % max_per_line  == 0 && isOddLine)
+				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y, x+ nodeWidth/2, y, isOddLine);
+			else if (counter % max_per_line == 0 && !isOddLine)
+				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y, x - nodeWidth/2, y, isOddLine);
+			else if (isOddLine)
+				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y, x + nodeWidth/2, y, isOddLine);
+			else
+				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y, x - nodeWidth/2, y, isOddLine);
+		}
+		old_x = x;
+		old_y = y;
+
+		x = isOddLine ? x - nodeWidth - distanceNodes : x + nodeWidth + distanceNodes;
+		ptr = ptr->next;
+		counter++;
+	}
+	gfx_paint();
+}
+
+void drawScreen(int screen, int* last_screen, int memory_size, NodeAllocated *start_allocated, NodeAvailable * start_available) {
+	system("clear");
+	gfx_clear();
+	switch (screen) {
+		case 0: //tela inicial
+			drawMainScreen(getPercentAllocated(memory_size, start_allocated));
+		break;
+		case 1: //tela disponiveis
+			drawAvailableScreen(start_available);
+		break;
+	}
+	*last_screen = screen;
 }
 
 void drawMainScreen(int porcent){
@@ -198,6 +384,11 @@ void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro p
 	}
 	ptr = *start;
 	if (!ptr) { //se juntou com um bloco unico, portanto a lista tornou-se vazia
+		*start = node;
+		return;
+	}
+	if (ptr->size > node->size) { //primeiro elemento eh maior que o no a ser inserido
+		node->next = *start;
 		*start = node;
 		return;
 	}
