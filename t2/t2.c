@@ -4,6 +4,7 @@
 #include <SDL/SDL.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <time.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
@@ -170,9 +171,9 @@ void drawArrowTo(int x_0, int y_0, int x, int y, int left, int bottom) {
 		gfx_line(x+30, y, x, y);
 	}
 	else if (left && !bottom) {//vem de cima e aponta pra esquerda
-		gfx_line(x_0, y_0, x_0 + 60, y_0);
-		gfx_line(x_0 + 60, y_0, x_0 + 60, y);
-		gfx_line(x_0+60, y, x, y);
+		gfx_line(x_0, y_0, x_0 + 30, y_0);
+		gfx_line(x_0 + 30, y_0, x_0 + 30, y);
+		gfx_line(x_0+30, y, x, y);
 	}
 	else if (!left && bottom) { //vai vir da direita e acima e vai apontar pra baixo e direita
 		gfx_line(x_0, y_0, x - 30, y_0);
@@ -180,9 +181,9 @@ void drawArrowTo(int x_0, int y_0, int x, int y, int left, int bottom) {
 		gfx_line(x-30, y, x, y);
 	}
 	else if (!left && !bottom) {//vem de cima e aponta pra direita
-		gfx_line(x_0, y_0, x_0 - 60, y_0);
-		gfx_line(x_0 - 60, y_0, x_0 - 60, y);
-		gfx_line(x_0-60, y, x, y);
+		gfx_line(x_0, y_0, x_0 - 30, y_0);
+		gfx_line(x_0 - 30, y_0, x_0 - 30, y);
+		gfx_line(x_0-30, y, x, y);
 	}
 
 	
@@ -190,13 +191,12 @@ void drawArrowTo(int x_0, int y_0, int x, int y, int left, int bottom) {
 
 void drawGeneralMap(int memory_size, NodeAllocated *start_allocated, NodeAvailable *start_available){
 	gfx_set_color(112, 128, 144);
-	srand(time(NULL));
-	int distance_from_border = 60; //distancia da borda em pixels
 	int memory_width = 1000;
 	int memory_height = 200;
 	int memory_left_x = WIDTH/2 - memory_width/2;
 	float pixels_per_address = 1000 / ((memory_size-1)*1.0); //pixels por unidade de endereco (bytes)
 	int shadow_colors[3]; //rgb da sombra
+	int text_width, text_height;
 
 	gfx_filled_rectangle(memory_left_x, HEIGHT/2 - memory_height/2, memory_left_x + memory_width, HEIGHT/2 + memory_height/2);
 	NodeAllocated *ptr = start_allocated;
@@ -225,6 +225,7 @@ void drawGeneralMap(int memory_size, NodeAllocated *start_allocated, NodeAvailab
 		int id_len = snprintf(NULL, 0, "%d", ptr->id);
 		char id[id_len + 1];
 		sprintf(id, "%d", ptr->id);
+		
 		gfx_set_font_size(10);
 		//conta enorme pra calcular o comprimento do bloco pra centralizar um texto.
 		int block_size = (memory_left_x + (ptr->address_end * pixels_per_address)) - (memory_left_x + ((ptr->address_start -1) * pixels_per_address));
@@ -255,12 +256,40 @@ void drawGeneralMap(int memory_size, NodeAllocated *start_allocated, NodeAvailab
 		char address_end[len_end+1];
 		sprintf(address_start, "%d", ptr_disp->address);
 		sprintf(address_end, "%d", ptr_disp->address + ptr_disp->size - 1);
+
+		int tam_len = snprintf(NULL, 0, "%d", ptr_disp->size);
+		char tam[tam_len + 1];
+		sprintf(tam, "%d", ptr_disp->size);
+		gfx_set_font_size(10);
+		int block_size = (memory_left_x + ((ptr_disp->address + ptr_disp->size - 1) * pixels_per_address)) - (memory_left_x + ((ptr_disp->address - 1) * pixels_per_address));
+		gfx_text( ((ptr_disp->address - 1) * pixels_per_address) + block_size/2 + memory_left_x,  HEIGHT/2 - memory_height/2 - 30, tam);
+
 		if (ptr_disp->size != 1) {
 			gfx_text(memory_left_x + ((ptr_disp->address - 1) * pixels_per_address)+ (2*len_start), HEIGHT/2 + memory_height/2 + 10, address_start);
 			gfx_text(memory_left_x + ((ptr_disp->address + ptr_disp->size - 1) * pixels_per_address) - (5*len_end), HEIGHT/2 + memory_height/2 + 10, address_end);
 		} else gfx_text(memory_left_x + ((ptr_disp->address - 1) * pixels_per_address) - (len_start) + 3, HEIGHT/2 + memory_height/2 + 10, address_start);
 		ptr_disp = ptr_disp->next;
 	}
+
+	//infografico
+	//memoria vazia
+	gfx_set_color(112, 128, 144);
+	gfx_filled_rectangle(100, HEIGHT-200, 200, HEIGHT-110);
+	gfx_set_font_size(10);
+	gfx_set_color(255,255,255);
+	gfx_text(80, HEIGHT-100, "End. inicial");
+	gfx_text(180, HEIGHT-100, "End. final");
+	gfx_text(125, HEIGHT-220, "Tamanho");
+
+	//memoria alocada
+	gfx_set_color(110, 110, 34);
+	gfx_filled_rectangle(WIDTH-100, HEIGHT-200, WIDTH-200, HEIGHT-80); //sombra
+	gfx_set_color(141, 144, 62);
+	gfx_filled_rectangle(WIDTH-100, HEIGHT-200, WIDTH-200, HEIGHT-110);
+	gfx_set_color(255,255,255);
+	gfx_text(WIDTH-230, HEIGHT-220, "End. inicial");
+	gfx_text(WIDTH-130, HEIGHT-220, "End. final");
+	gfx_text(WIDTH-150, HEIGHT-160, "ID");
 
 	gfx_paint();
 }
@@ -398,7 +427,7 @@ void drawAllocatedScreen(NodeAllocated *head){
 	int next_rect_width = nodeWidth/5;
 	int old_x = 0;
 	int old_y = 0;
-	int next_rect_x;
+	
 	while (ptr){
 		total++; //calcular o total eh importante para saber a posicao ideal de cada elemento
 		ptr = ptr->next;
@@ -470,13 +499,13 @@ void drawAllocatedScreen(NodeAllocated *head){
 
 			*/
 			if (counter % max_per_line  == 0 && !isOddLine){
-				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y-10, x - nodeWidth/2, y-10, 0, 0);
-				drawArrowTo(x + next_rect_width/2 - nodeWidth/2, y+10, old_x - nodeWidth/2, old_y+10, 0, 1);
+				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y+10, x - nodeWidth/2, y-10, 0, 0);
+				drawArrowTo(x + next_rect_width/2 - nodeWidth/2, y+10, old_x - nodeWidth/2, old_y-10, 0, 1);
 			}
 			else if(counter % max_per_line == 0 && isOddLine){
 			
-				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y-10, x + nodeWidth/2, y-10, 1, 0);
-				drawArrowTo(x - next_rect_width/2 + nodeWidth/2, y+10, old_x + nodeWidth/2, old_y+10, 1, 1);
+				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y+10, x + nodeWidth/2, y-10, 1, 0);
+				drawArrowTo(x - next_rect_width/2 + nodeWidth/2, y+10, old_x + nodeWidth/2, old_y-10, 1, 1);
 			}
 			else if (!isOddLine){
 				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y-10, x - nodeWidth/2, y-10, 0, 0);
@@ -507,11 +536,15 @@ void drawMainScreen(int porcent){
 	char txt[30] = "Memoria em uso: ";
 	strcat(txt, str);
 	strcat(txt, "%");
+	gfx_set_font_size(30);
+
+	int text_width, text_height;
+	gfx_get_text_size(txt, &text_width,&text_height);
 
 	gfx_rectangle(0 + offset, HEIGHT/2 - 100 - size/2, WIDTH - offset, HEIGHT/2  - 100 + size/2);
 	gfx_set_color(124 + porcent, 252 - porcent * 2, 0); //verde
-	gfx_set_font_size(30);
-	gfx_text(WIDTH/2 - 150, HEIGHT/2 - 250, txt);
+
+	gfx_text(WIDTH/2 - text_width/2, HEIGHT/2 - 250, txt);
 	for (int i = 0; i < porcent; i++) {
 		const int memoryOffset = 4;
 		const int memoryWidth = (WIDTH - 2 * offset - 400) * 0.01; // tamanho individual de cada memoria
