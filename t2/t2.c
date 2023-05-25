@@ -18,6 +18,7 @@ typedef struct DoubleNode {
 	int id;
 	int address_start;
 	int address_end;
+	int rgb[3]; //desenhar na tela
 	struct DoubleNode *next;
 	struct DoubleNode *previous;
 } NodeAllocated;
@@ -39,6 +40,7 @@ void drawAllocatedScreen(NodeAllocated *head);
 int main()
 {
 	// inicializacao da Memoria
+	srand(time(NULL));
 	int memory_size;
 	int screen = 0;
 	int last_screen = -1;
@@ -186,6 +188,83 @@ void drawArrowTo(int x_0, int y_0, int x, int y, int left, int bottom) {
 	
 }
 
+void drawGeneralMap(int memory_size, NodeAllocated *start_allocated, NodeAvailable *start_available){
+	gfx_set_color(112, 128, 144);
+	srand(time(NULL));
+	int distance_from_border = 60; //distancia da borda em pixels
+	int memory_width = 1000;
+	int memory_height = 200;
+	int memory_left_x = WIDTH/2 - memory_width/2;
+	float pixels_per_address = 1000 / ((memory_size-1)*1.0); //pixels por unidade de endereco (bytes)
+	int shadow_colors[3]; //rgb da sombra
+
+	gfx_filled_rectangle(memory_left_x, HEIGHT/2 - memory_height/2, memory_left_x + memory_width, HEIGHT/2 + memory_height/2);
+	NodeAllocated *ptr = start_allocated;
+	
+
+	ptr = start_allocated;
+	while (ptr) {
+		//gradiente das cores
+		for (int i = 0; i < 3; i++)
+			shadow_colors[i] = ptr->rgb[i] - 30;
+		//sombra
+		gfx_set_color(shadow_colors[0], shadow_colors[1], shadow_colors[2]);	
+		gfx_filled_rectangle(memory_left_x + (ptr->address_start -1) * pixels_per_address,
+		HEIGHT/2 - memory_height/2,
+		memory_left_x + (ptr->address_end * pixels_per_address),
+		HEIGHT/2 + memory_height/2);
+
+		//superior
+		gfx_set_color(ptr->rgb[0] , ptr->rgb[1], ptr->rgb[2]);
+		gfx_filled_rectangle(memory_left_x + ((ptr->address_start -1) * pixels_per_address),
+		HEIGHT/2 - memory_height/2 - 60,
+		memory_left_x + (ptr->address_end * pixels_per_address),
+		HEIGHT/2 + memory_height/2 - 60);
+
+		gfx_set_color(255,255, 255);
+		int id_len = snprintf(NULL, 0, "%d", ptr->id);
+		char id[id_len + 1];
+		sprintf(id, "%d", ptr->id);
+		gfx_set_font_size(10);
+		//conta enorme pra calcular o comprimento do bloco pra centralizar um texto.
+		int block_size = (memory_left_x + (ptr->address_end * pixels_per_address)) - (memory_left_x + ((ptr->address_start -1) * pixels_per_address));
+		gfx_text(2 * memory_left_x + ((ptr->address_start -1) * pixels_per_address) + block_size/2 - 13 - id_len, 
+		HEIGHT/2 - memory_height/2 - 10, id);
+
+
+		int len_start = snprintf(NULL, 0, "%d", ptr->address_start);
+		int len_end = snprintf(NULL, 0, "%d", ptr->address_end);
+		char address_start[len_start+1];
+		char address_end[len_end+1];
+		
+		sprintf(address_start, "%d", ptr->address_start);
+		sprintf(address_end, "%d", ptr->address_end);
+		gfx_set_font_size(9);
+		gfx_text(memory_left_x + ((ptr->address_start -1) * pixels_per_address)+ (2*len_start), HEIGHT/2 - memory_height/2 - 70, address_start);
+		if (ptr->address_start != ptr->address_end) //so fazer o texto de endereco final se os dois forem diferentes (nao for 1 byte)
+			gfx_text(memory_left_x + (ptr->address_end * pixels_per_address) - (5*len_end), HEIGHT/2 - memory_height/2 - 70, address_end);
+		ptr = ptr->next;
+	}
+	NodeAvailable *ptr_disp = start_available;
+	while (ptr_disp){
+		gfx_set_color(255, 255, 255);
+		gfx_set_font_size(9);
+		int len_start = snprintf(NULL, 0, "%d", ptr_disp->address);
+		int len_end = snprintf(NULL, 0, "%d", ptr_disp->address + ptr_disp->size - 1);
+		char address_start[len_start+1];
+		char address_end[len_end+1];
+		sprintf(address_start, "%d", ptr_disp->address);
+		sprintf(address_end, "%d", ptr_disp->address + ptr_disp->size - 1);
+		if (ptr_disp->size != 1) {
+			gfx_text(memory_left_x + ((ptr_disp->address - 1) * pixels_per_address)+ (2*len_start), HEIGHT/2 + memory_height/2 + 10, address_start);
+			gfx_text(memory_left_x + ((ptr_disp->address + ptr_disp->size - 1) * pixels_per_address) - (5*len_end), HEIGHT/2 + memory_height/2 + 10, address_end);
+		} else gfx_text(memory_left_x + ((ptr_disp->address - 1) * pixels_per_address) - (len_start) + 3, HEIGHT/2 + memory_height/2 + 10, address_start);
+		ptr_disp = ptr_disp->next;
+	}
+
+	gfx_paint();
+}
+
 void drawAvailableScreen(NodeAvailable *start_available){
 	NodeAvailable *ptr = start_available;
 	if (!ptr) return;
@@ -292,9 +371,13 @@ void drawScreen(int screen, int* last_screen, int memory_size, NodeAllocated *st
 		case 1: //tela disponiveis
 			drawAvailableScreen(start_available);
 		break;
+    case 2: //mapa geral
+			drawGeneralMap(memory_size, start_allocated, start_available);
+		break;
 		case 3:
 			drawAllocatedScreen(start_allocated);
 		break;
+
 	}
 	*last_screen = screen;
 }
@@ -478,8 +561,6 @@ void printSingleNodes(NodeAvailable *start){
 	}
 }
 
-
-
 //lista simplesmente encadeada
 NodeAvailable *createSingleNode(int address, int size) {
 	NodeAvailable *node = (NodeAvailable*)malloc(sizeof(NodeAvailable));
@@ -488,8 +569,6 @@ NodeAvailable *createSingleNode(int address, int size) {
 	node->next = NULL;
 	return node;
 }
-
-
 
 //insere um NODE em uma lista simplesmente encadeada ordenada de forma crescente
 void insertSingleList(NodeAvailable *node, NodeAvailable **start) { //ponteiro para ponteiro em caso de precisar alterar o comeco da lista
@@ -570,6 +649,9 @@ NodeAllocated *createDoubleNode(int start, int end){
 	node->id = id;
 	node->address_start = start;
 	node->address_end = end;
+	for(int i = 0; i < 3; i++) {
+		node->rgb[i] = 40 + (rand() %190);
+	}
 	node->next = NULL;
 	node->previous = NULL;
 	id++;
