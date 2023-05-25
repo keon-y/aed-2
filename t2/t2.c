@@ -36,6 +36,7 @@ void removeDoublyList (int id, NodeAllocated **head, NodeAvailable **available_s
 void drawMainScreen();
 int getPercentAllocated(int, NodeAllocated *);
 void drawScreen(int, int*, int, NodeAllocated *, NodeAvailable *);
+void drawAllocatedScreen(NodeAllocated *head);
 int main()
 {
 	// inicializacao da Memoria
@@ -144,35 +145,44 @@ int getPercentAllocated(int m, NodeAllocated *head) {
 	NodeAllocated *ptr = head;
 	int sum = 0;
 	while (ptr) {
-		sum += (ptr->address_end - ptr->address_start + 1);
+		sum += (ptr->address_end - ptr->address_start) + 1;
 		ptr = ptr->next;
 	}
 	return sum/(m*1.0)*100;
 }
 //left_to_left: se a flecha vai sair da esquerda e apontar para a esquerda, como em casos de apontar para a linha de baixo ou de cima
 //left: se a flecha aponta para a esquerda
-void drawArrowTo(int x_0, int y_0, int x, int y, int left_to_left) {
-	if (left_to_left){
+void drawArrowTo(int x_0, int y_0, int x, int y, int left, int bottom) {
+	if (left){ //seta (apenas as duas diagonais) apontando pra esquerda
 		gfx_line(x, y, x + 10, y - 8);
 		gfx_line(x, y, x + 10, y + 8);
 	}
-	else{
+	else{ //seta apontando pra direita
 		gfx_line(x, y, x - 10, y - 8);
 		gfx_line(x, y, x - 10, y + 8);
 	}
-	if (y_0 == y) {//apenas uma flecha reta
+
+	if (y_0 == y) //reta
 		gfx_line(x_0, y_0, x, y);
-		return;
+	else if (left && bottom) { //vai vir de baixo e apontar para a esquerda
+		gfx_line(x_0, y_0, x + 30, y_0);
+		gfx_line(x+30, y_0, x + 30, y);
+		gfx_line(x+30, y, x, y);
 	}
-	if (left_to_left) {
-		gfx_line(x_0, y_0, x_0 + (WIDTH - x_0)/2, y_0);
-		gfx_line(x_0 + (WIDTH - x_0)/2, y_0, x_0 + (WIDTH - x_0)/2, y);
-		gfx_line(x_0 + (WIDTH - x_0)/2, y, x, y);
+	else if (left && !bottom) {//vem de cima e aponta pra esquerda
+		gfx_line(x_0, y_0, x_0 + 60, y_0);
+		gfx_line(x_0 + 60, y_0, x_0 + 60, y);
+		gfx_line(x_0+60, y, x, y);
 	}
-	else {
-		gfx_line(x_0, y_0, x_0 - (x_0)/2, y_0);
-		gfx_line(x_0 - (x_0)/2, y_0, x_0 - (x_0)/2, y);
-		gfx_line(x_0 - (x_0)/2, y, x, y);
+	else if (!left && bottom) { //vai vir da direita e acima e vai apontar pra baixo e direita
+		gfx_line(x_0, y_0, x - 30, y_0);
+		gfx_line(x-30, y_0, x - 30, y);
+		gfx_line(x-30, y, x, y);
+	}
+	else if (!left && !bottom) {//vem de cima e aponta pra direita
+		gfx_line(x_0, y_0, x_0 - 60, y_0);
+		gfx_line(x_0 - 60, y_0, x_0 - 60, y);
+		gfx_line(x_0-60, y, x, y);
 	}
 
 	
@@ -333,13 +343,13 @@ void drawAvailableScreen(NodeAvailable *start_available){
 
 			*/
 			if (counter % max_per_line  == 0 && isOddLine)
-				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y, x+ nodeWidth/2, y, isOddLine);
+				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y, x+ nodeWidth/2, y, isOddLine, 0);
 			else if (counter % max_per_line == 0 && !isOddLine)
-				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y, x - nodeWidth/2, y, isOddLine);
+				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y, x - nodeWidth/2, y, isOddLine, 0);
 			else if (isOddLine)
-				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y, x + nodeWidth/2, y, isOddLine);
+				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y, x + nodeWidth/2, y, isOddLine, 0);
 			else
-				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y, x - nodeWidth/2, y, isOddLine);
+				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y, x - nodeWidth/2, y, isOddLine, 0);
 		}
 		old_x = x;
 		old_y = y;
@@ -361,12 +371,131 @@ void drawScreen(int screen, int* last_screen, int memory_size, NodeAllocated *st
 		case 1: //tela disponiveis
 			drawAvailableScreen(start_available);
 		break;
-		case 2: //mapa geral
+    case 2: //mapa geral
 			drawGeneralMap(memory_size, start_allocated, start_available);
+		break;
+		case 3:
+			drawAllocatedScreen(start_allocated);
 		break;
 
 	}
 	*last_screen = screen;
+}
+
+void drawAllocatedScreen(NodeAllocated *head){
+	NodeAllocated *ptr = head;
+	if (!ptr) return;
+	gfx_set_font_size(10);
+	int counter = 0;
+	int total = 0; //daria pra fazer uma variavel estatica
+	int distanceNodes = 50; //cada no ficara a 50px de distancia um do outro
+	int nodeWidth = 140; 
+	int nodeHeight = 80; //altura fixa
+	int x;
+	int y = HEIGHT/2;
+	int max_per_line = WIDTH/(nodeWidth + distanceNodes);
+	int total_lines;
+	int next_rect_width = nodeWidth/5;
+	int old_x = 0;
+	int old_y = 0;
+	int next_rect_x;
+	while (ptr){
+		total++; //calcular o total eh importante para saber a posicao ideal de cada elemento
+		ptr = ptr->next;
+	}
+	total_lines = ((total-1)/max_per_line); //se for um numero quebrado eh arredondado pra baixo, 
+	//portanto se total_lines * max_per_line vai ser menor do que um elemento SE esse elemento estiver em uma linha nao completa
+	y = HEIGHT/2 - total_lines * (nodeHeight/2 + distanceNodes/2);
+	
+
+	
+	ptr = head;
+	while (ptr) {
+		int isOddLine = (counter / max_per_line) % 2 == 1;
+		if (counter % max_per_line == 0) {
+			if (isOddLine)
+				x = counter + 1< total_lines * max_per_line ? 
+				WIDTH/2 + (distanceNodes/2 + nodeWidth/2) * (max_per_line - 1) : 
+				WIDTH/2 + (distanceNodes/2 + nodeWidth/2) * (total - counter - 1);
+			else 
+				x = counter + 1 < total_lines * max_per_line ? 
+				WIDTH/2 - (distanceNodes/2 + nodeWidth/2) * (max_per_line - 1) : 
+				WIDTH/2 - (distanceNodes/2 + nodeWidth/2) * (total - counter - 1);
+			if (counter) //na primeira iteracao nao fazer
+			y += nodeHeight + distanceNodes;
+		}
+
+		gfx_rectangle(x - nodeWidth/2, 
+		y - nodeHeight/2, 
+		x + nodeWidth/2, 
+		y + nodeHeight/2);
+
+		
+		//retangulos menores de onde sai a flecha pro prox
+		gfx_rectangle(x - nodeWidth/2,
+		y - nodeHeight/2, 
+		(x - nodeWidth/2) + next_rect_width, 
+		y + nodeHeight/2);
+
+		gfx_rectangle(x + nodeWidth/2,
+		y - nodeHeight/2, 
+		(x + nodeWidth/2) - next_rect_width, 
+		y + nodeHeight/2);
+
+		char endereco_inicial[30] = "End. inicio: ";
+		char num_endereco[11];
+		sprintf(num_endereco, "%d", ptr->address_start);
+		strcat(endereco_inicial, num_endereco);
+
+		char endereco_final[30] = "End. fim: ";
+		char num_final[11];
+		sprintf(num_final, "%d", ptr->address_end);
+		strcat(endereco_final, num_final);
+		
+		char id[12] = "ID: ";
+		char num_id[11];
+		sprintf(num_id, "%d", ptr->id);
+		strcat(id, num_id);
+
+		gfx_text(x - 30, y - 30, endereco_inicial);
+		gfx_text(x - 30, y - 7, endereco_final);
+		gfx_text(x - 30, y + 20, id);
+
+		if (counter) {
+			/*	se for um ultimo elemento:
+					par: ligar x antigo + metade com x novo + metade
+					impar: ligar x antigo - metade do tamanho com x antigo + metade
+				se for uma linha par ligar o x antigo + metade do tamanho com x novo - metade do tamanho
+				se for uma linha impar ligar o x antigo - metade do tamanho com x novo + metade do tamanho
+
+			*/
+			if (counter % max_per_line  == 0 && !isOddLine){
+				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y-10, x - nodeWidth/2, y-10, 0, 0);
+				drawArrowTo(x + next_rect_width/2 - nodeWidth/2, y+10, old_x - nodeWidth/2, old_y+10, 0, 1);
+			}
+			else if(counter % max_per_line == 0 && isOddLine){
+			
+				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y-10, x + nodeWidth/2, y-10, 1, 0);
+				drawArrowTo(x - next_rect_width/2 + nodeWidth/2, y+10, old_x + nodeWidth/2, old_y+10, 1, 1);
+			}
+			else if (!isOddLine){
+				drawArrowTo(old_x + nodeWidth/2 - next_rect_width/2, old_y-10, x - nodeWidth/2, y-10, 0, 0);
+				drawArrowTo(x + next_rect_width/2 - nodeWidth/2, y+10, old_x + nodeWidth/2, old_y+10, 1, 0);
+			}
+			else {
+				drawArrowTo(old_x - nodeWidth/2 + next_rect_width/2, old_y-10, x + nodeWidth/2, y-10, 1, 0);
+				drawArrowTo(x - next_rect_width/2 + nodeWidth/2, y+10, old_x - nodeWidth/2, old_y+10, 0, 0);
+			}
+		}
+		old_x = x;
+		old_y = y;
+
+		x = isOddLine ? x - nodeWidth - distanceNodes : x + nodeWidth + distanceNodes;
+		ptr = ptr->next;
+		counter++;
+	}
+	gfx_paint();
+
 }
 
 void drawMainScreen(int porcent){
