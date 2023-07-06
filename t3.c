@@ -4,7 +4,7 @@
 #include <SDL/SDL.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <unistd.h>
+
 #include <string.h>
 
 #define WIDTH 1024
@@ -24,6 +24,8 @@ typedef struct Node {
 	struct Node *left;
 	struct Node *right;
 } Node;
+
+void pause();
 
 /*  Procura um valor val e armazena o ponteiro para o no em ret
 	retorna um valor f:
@@ -56,73 +58,80 @@ Node *create(int key){
 	return newNode;
 }
 
-int insert(int key, Node **root){
+void insert(int key, Node **root){
 
 	Node *newNode = create(key);
 	Node *pt = *root;
 	int status = search(key, pt, &pt); //os codigos da busca (1 para igual, 2 para menor, etc)
-	printf("status: %d\n", status);
 
 	switch(status) {
 		case 1:
-			printf("insercao invalida");
-			return 0;
+			printf("[ERRO] %d ja existe na arvore\n", key);
+			break;
 		case 0:
 			*root = newNode;
+			printf("[SUCESSO] Arvore criada com raiz %d\n", key);
 			break;
 		case 2:
 			pt->left = newNode;
+			printf("[SUCESSO] No %d adicionado a arvore\n", key);
 			break;
 		case 3:
 			pt->right = newNode;
+			printf("[SUCESSO] No %d adicionado a arvore\n", key);
 			break;
 	}
-
-	return 1;
 }
 
-//checa se dado no eh uma folha
-int checkLeaf(Node *node){
-	return node->left == NULL && node->right == NULL;
+//desaloca um no node e todos seus filhos
+void desalocateTree(Node *node) {
+	if (node->left)
+		desalocateTree(node->left);
+	if (node->right)
+		desalocateTree(node->right);
+	free(node);
 }
 
-//encontrar o no pai de um no `child`
-Node *getAncestor(Node *root, Node *child) {
+//encontrar o no pai de um no `child` partindo de um no 'root'
+Node *getAncestor(Node *node, Node *child) {
 	Node *parent = NULL;
-	while (root != child) {
-		parent = root;
-		root = root->key >= child->key ? root->left : root->right;
+	while (node != child) {
+		parent = node;
+		node = node->key >= child->key ? node->left : node->right;
 	}
 	return parent;
 }
 
-Node *getMin(Node *root) {
-	while (root->left)
-		root = root->left;
-	return root;
+//encontra o valor minimo de uma arvore/subarvore
+Node *getMin(Node *node) {
+	while (node->left)
+		node = node->left;
+	return node;
 }
 
-Node *getMax(Node *root) {
-	while (root->right)
-		root = root->right;
-	return root;
+//encontra o valor maximo de uma arvore/subarvore
+Node *getMax(Node *node) {
+	while (node->right)
+		node = node->right;
+	return node;
 }
 
-Node *getSuccessor(Node *root, int key){
+//encontra o sucessor de um no de valor 'key' 
+Node *getSuccessor(Node *node, int key){
 	Node *successor = NULL;
 	Node *ptr = NULL; //apontar para o no que contem a chave
-	if (!root || search(key, root, &ptr) != 1)
+	if (!node || search(key, node, &ptr) != 1)
 		return NULL; //ARVORE nao existe ou entao o valor nao existe na arvore
 	
 	if (ptr->right) successor = getMin(ptr->right); //tem subarvore direita
 
-	else while (root != NULL) {
-		if (key >= root->key) {
-			root = root->right;
+	else while (node != NULL) {
+		if (key >= node->key) {
+			node = node->right;
 		}
 		else {
-			successor = root;
-			root = root->left;
+			successor = node;
+			node = node->left;
 		}
 	}
 	return successor;
@@ -212,17 +221,15 @@ void removeNode(Node *node, Node **root) {
 void paintNode(Node *node, int x, int y, int depth) {
 	if (!node) return;
 	if (node->left) {
-		printf("%d left -> %d\n", node->key, node->left->key);
 		gfx_line(x, y, x - (200/depth), y + 80);
 		paintNode(node->left, x - (200/depth), y + 80, depth + 1);
 	}
 	if (node->right) {
-		printf("%d right -> %d\n", node->key, node->right->key);
 		gfx_line(x, y, x + (200/depth), y + 80);
 		paintNode(node->right, x + (200/depth), y + 80, depth + 1);
 	}
 	gfx_set_color(0, 0, 0);
-	gfx_filled_ellipse(x,y,30,30);
+	gfx_filled_ellipse(x,y,30- 2 * depth,30 - 2*depth);
 	gfx_set_color(255,255,255);
 	gfx_ellipse(x, y, 30, 30);
 	char text[30];
@@ -254,25 +261,40 @@ void preorderRead(Node *ancestor, FILE *ptr, int isLeft) {
 	free(binaryNode);
 }
 
-Node *readTree(){
-	FILE *ptr = fopen("15.bin", "rb");
+void readTree(Node **root, char *filename){
+	FILE *ptr = fopen(filename, "rb");
 	if (!ptr) {
-		printf("Erro!");
-		return NULL;
+		printf("Arquivo nao encontrado\n");
+		return;
+	}
+
+	fseek(ptr, 0, SEEK_END);
+	size_t size = ftell(ptr);
+	fseek(ptr, 0, SEEK_SET);
+
+	if (sizeof(struct s_arq_no) > size) { //carregar um arquivo vazio significa desalocar a arvore
+		desalocateTree(*root);
+		*root = NULL;
+		printf("Arquivo vazio\n");
+		return;
 	}
 
 	struct s_arq_no *binaryNode = malloc(sizeof(struct s_arq_no));
 	fread(binaryNode, sizeof(struct s_arq_no), 1, ptr);
+
+	//desalocar a raiz antiga (caso exista)
+	if (*root)
+		desalocateTree(*root);
 	
-	Node *root = create(binaryNode->chave);
+	*root = malloc(sizeof(Node));
+	*root = create(binaryNode->chave);
 	if (binaryNode->esq)
-		preorderRead(root, ptr, 1);
+		preorderRead(*root, ptr, 1);
 	if (binaryNode->dir)
-		preorderRead(root, ptr, 0);
+		preorderRead(*root, ptr, 0);
 	
 	free(binaryNode);
 	fclose(ptr);
-	return root;
 }
 
 void preorderSave(Node *node, FILE *ptr) {
@@ -281,37 +303,33 @@ void preorderSave(Node *node, FILE *ptr) {
 	binaryNode->esq = node->left != NULL;
 	binaryNode->dir = node->right != NULL;
 	fwrite(binaryNode, sizeof(struct s_arq_no), 1, ptr);
-	printf("Salvo %d na arvore (esq %d ;; dir: %d)\n", binaryNode->chave, binaryNode->esq, binaryNode->dir);
 	if (node->left) preorderSave(node->left, ptr);
 	if (node->right) preorderSave(node->right, ptr);
 	free(binaryNode);
 }
 
 void saveTree(Node *root, char *filename){
-	if (!root) return;
 
 	FILE *ptr = fopen(filename, "wb+");
 	if (!ptr) return;
-
-	preorderSave(root, ptr);
+	if (!root) fputc(0, ptr); //arquivo vazio
+	else preorderSave(root, ptr);
 
 
 	fclose(ptr);
 }
 
+void pause(){
+	fflush(stdout);
+	system("read -p \"Pressione uma tecla para continuar\" var");
+}
+
 int main() {
 	
 	Node *root = NULL;
+	char str[30];
 
 	insert(3, &root);
-	insert(1, &root);
-	insert(7, &root);
-	insert(2, &root);
-	insert(5, &root);
-	insert(4, &root);
-	insert(6, &root);
-	insert(9, &root);
-	insert(8, &root);
 
 	gfx_init(WIDTH, HEIGHT, "");
 
@@ -322,61 +340,78 @@ int main() {
 		gfx_clear();
 		paintNode(root, WIDTH/2, 90, 1);
 		gfx_paint();
-		printf("1. Inserir\n2. Remover\n3. Buscar maior e menor\n4. Buscar sucessor e predecessor\n5. Sair\n--> ");
+		printf("1. Inserir\n2. Remover\n3. Buscar maior e menor\n4. Buscar sucessor e predecessor\n5. Ler arquivo\n6. Salvar arquivo\n7. Sair\n--> ");
 		scanf("%d", &escolha);
 		switch (escolha){
 			case 1: //insercao
-				printf("Informe o valor a ser inserido na arvore: ");
+				printf("\nInforme o valor a ser inserido na arvore: \n --> ");
 				scanf("%d", &val);
 				insert(val, &root);
 			break;
 
 			case 2: //remocao
-				printf("Informe o valor a ser removido da arvore: ");
+				printf("\nInforme o valor a ser removido da arvore:\n --> ");
 				scanf("%d", &val);
-				if (search(val, root, &ptr) == 1)
+				if (search(val, root, &ptr) == 1) {
 					removeNode(ptr, &root);
+					printf("[SUCESSO] Elemento %d removido da arvore\n", val);
+				}
+				else printf("[ERRO] Elemento %d nao existe na arvore\n", val);
 			break;
 
 			case 3:
 				ptr = getMax(root);
 				if (ptr)
-					printf("Maior valor da arvore: %d\n", ptr->key);
+					printf("\nMaior valor da arvore: %d\n", ptr->key);
 				ptr = getMin(root);
 				if (ptr)
-					printf("Menor valor da arvore: %d\n", ptr->key);
+					printf("Menor valor da arvore: %d\n\n", ptr->key);
+				else printf("[ERRO] Arvore vazia\n");
 			break;
 
 			case 4:
-				printf("Informe o valor para descobrir seu sucessor e predecessor: ");
+				printf("\nInforme o valor para descobrir seu sucessor e predecessor: ");
 				scanf("%d", &val);
 				if (search(val, root, &ptr) != 1) {
-					printf("Elemento nao existe na arvore!");
-					break;
-				}
-				ptr = getSuccessor(root, val);
-				if (ptr) printf("Sucessor de %d: %d\n", val, ptr->key);
+					printf("[ERRO] Elemento %d nao existe na arvore", val);
+					
+				} else {
+					ptr = getSuccessor(root, val);
+					if (ptr) printf("Sucessor de %d: %d\n", val, ptr->key);
+					else printf("[ERRO] %d nao possui sucessor\n", val);
 
-				ptr = getPredecessor(root, val);
-				if (ptr) printf("Predecessor de %d: %d\n", val, ptr->key);
+					ptr = getPredecessor(root, val);
+					if (ptr) printf("Predecessor de %d: %d\n", val, ptr->key);
+					else printf("[ERRO] %d nao possui predecessor\n", val);
+				}
 			break;
 
 			case 5:
-				root = readTree();
-
+				printf("\nInforme o nome do arquivo:\n --> ");
+				scanf("%s", str);
+				readTree(&root, str);
+				printf("[SUCESSO] Arquivo %s carregado\n", str);
 			break;
 
 			case 6:
-				saveTree(root, "oi");
+				printf("\nInforme o nome do arquivo:\n --> ");
+				scanf("%s", str);
+				saveTree(root, str);
+				printf("[SUCESSO] Arquivo %s salvo\n", str);
+			break;
+
+			case 7:
 			break;
 
 			default:
-				printf("Opcao inexistente");
+				printf("[ERRO] Opcao inexistente");
 		}
-
-
+		if (escolha != 7) //nao pedir para pressionar tecla quando for sair
+			pause();
 	} while (escolha != 7);
 	gfx_quit();
+	if (root)
+		desalocateTree(root);
 	
 
 	return 1;
