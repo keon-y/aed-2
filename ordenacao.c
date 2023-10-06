@@ -3,8 +3,12 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
+void swap(int32_t*, size_t, size_t);
 void bubbleSort(size_t size, int32_t list[size]);
+void bubbleSortOptimized(size_t size, int32_t list[size]);
+
 
 int main(int argc, char *argv[]) {
     if (argc != 4) { //error handler basico para ver se o usuario colocou argumentos
@@ -45,8 +49,10 @@ int main(int argc, char *argv[]) {
 
     switch (atoi(argv[1])) {
         case 1:
-            
             bubbleSort(size, list);
+            break;
+        case 2:
+            bubbleSortOptimized(size, list);
             break;
         default:
             printf("Escolha inexistente!\n");
@@ -65,14 +71,38 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+void swap(int32_t *arr, size_t index1, size_t index2){
+    int32_t temp = *(arr + index1);
+    *(arr + index1) = *(arr + index2);
+    *(arr + index2) = temp;
+}
+
 void bubbleSort(size_t size, int32_t list[size]){
+
     for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size - 1 - i; j++) {
+        for (int j = 0; j < size - 1; j++) {
             if (list[j] > list[j + 1]) {
-                int32_t temp = list[j];
-                list[j] = list[j + 1];
-                list[j + 1] = temp;
+                swap(&list[0], j, j+1);
             }
         }
     }
 }
+
+void bubbleSortOptimized(size_t size, int32_t list[size]){
+    bool changed = true;
+    int j, end = size - 1, lastChangedIndex = size;
+    while (changed) {
+        j = 0;
+        changed = false;
+        for (int j = 0; j < end; j++) {
+            if (list[j] > list[j + 1]) {
+                swap(&list[0], j, j+1);
+                changed = true;
+                lastChangedIndex = j;
+            }
+        }
+        end = lastChangedIndex;
+    }
+}
+
+void insertionSort()
