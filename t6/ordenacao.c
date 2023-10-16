@@ -10,6 +10,7 @@ void swap(int32_t*, unsigned long long, unsigned long long);
 void printArr(unsigned long long size, int32_t arr[size]);
 void bubbleSort(unsigned long long size, int32_t list[size]);
 void bubbleSortOptimized(unsigned long long size, int32_t list[size]);
+void insertionSort(long long size, int32_t list[size]);
 void mergeSort(unsigned long long size, int32_t arr[size], int32_t temp[size], int ini, int fim);
 void merge(unsigned long long size, int32_t arr[size], int32_t temp[size], int ini1, int ini2, int fim2);
 void quickSortLast(unsigned long long size, int32_t arr[size], int ini, int fim);
@@ -72,6 +73,11 @@ int main(int argc, char *argv[]) {
         case 2:
             begin = clock();
             bubbleSortOptimized(size, list);
+            end = clock();
+            break;
+        case 3:
+            begin = clock();
+            insertionSort(size, list);
             end = clock();
             break;
         case 4:
@@ -159,6 +165,21 @@ void bubbleSortOptimized(unsigned long long size, int32_t list[size]){
             }
         }
         end = lastChangedIndex;
+    }
+}
+
+void insertionSort(long long size, int32_t list[size]) {
+    int32_t prov;
+    int j;
+    for (int i = 1; i < size; i++) {
+        prov = list[i];
+        j = i - 1;
+
+        while (j >= 0 && prov < list[j]) { 
+            list[j+1] = list[j];
+            j = j - 1;
+        }
+        list[j + 1] = prov;
     }
 }
 
