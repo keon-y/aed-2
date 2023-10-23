@@ -16,11 +16,10 @@ void merge(unsigned long long size, int32_t arr[size], int32_t temp[size], int i
 void quickSortLast(unsigned long long size, int32_t arr[size], int ini, int fim);
 int randomPivot(int ini, int fim);
 void quickSortRandom(unsigned long long size, int32_t arr[size], int ini, int fim);
-void choosePivot(int32_t arr[], int ini, int fim, int *med);
+int choosePivot(int32_t arr[], int a, int b, int c);
 void quickSortMedian(unsigned long long size, int32_t arr[size], int ini, int fim);
-void arranjar(int32_t arr[], unsigned long long);
-void descer(int32_t arr[], int i, int n);
-void heapSort(unsigned long long size, int32_t arr[size]);
+void descer(int32_t arr[], int i, long long n);
+void heapSort(long long size, int32_t arr[size]);
 
 
 int main(int argc, char *argv[]) {
@@ -44,7 +43,9 @@ int main(int argc, char *argv[]) {
     }
     size = st.st_size / sizeof(int32_t);
     int32_t *list = malloc(sizeof(int32_t) * size);
-    int32_t *temp = malloc(sizeof(int32_t) * size);
+    int32_t *temp;
+    if (atoi(argv[1]) == 4)
+        temp = malloc(sizeof(int32_t) * size);
 
     for (int i = 0; i < size; i++) 
         fread(&list[i], sizeof(int32_t), 1, ptr);
@@ -87,7 +88,7 @@ int main(int argc, char *argv[]) {
             break;
         case 5:
             begin = clock();
-            quickSortLast(size, list, 0, size-1);
+            quickSortLast(size, list, 0, size - 1);
             end = clock();
             break;
         case 6:
@@ -102,7 +103,7 @@ int main(int argc, char *argv[]) {
             break;
         case 8:
             begin = clock();
-            heapSort(size, list);
+            heapSort(size - 1, list);
             end = clock();
             break;
 
@@ -113,24 +114,27 @@ int main(int argc, char *argv[]) {
 
     
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    printf("Tempo de execucao: %fms\n", time_spent);
+    printf("%f\n", time_spent);
 
 
     FILE *dest = fopen(argv[3], "wb");
     for (int i = 0; i < size; i++)
-        fwrite(&list[i], sizeof(int32_t), 1, dest); //VER DEPOIS a lista pode mudar, dependendo do sort outra lista pode ser criada
+        fwrite(&list[i], sizeof(int32_t), 1, dest);
     fclose(dest);
 
     free(list);
-    free(temp);
+    if (atoi(argv[1]) == 4)
+        free(temp);
     
     return 0;
 }
 
-void swap(int32_t *arr, unsigned long long index1, unsigned long long index2){
-    int32_t temp = *(arr + index1);
-    *(arr + index1) = *(arr + index2);
-    *(arr + index2) = temp;
+void swap(int32_t arr[], unsigned long long index1, unsigned long long index2){
+    int32_t temp = arr[index1];
+    arr[index1] = arr[index2];
+    arr[index2] = temp;
+
+    //printf("Trocando %d com %d\n", *(arr + index1), *(arr + index2));
 }
 
 void printArr(unsigned long long size, int32_t arr[size]) {
@@ -145,7 +149,7 @@ void bubbleSort(unsigned long long size, int32_t list[size]){
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size - 1; j++) {
             if (list[j] > list[j + 1]) {
-                swap(&list[0], j, j+1);
+                swap(list, j, j+1);
             }
         }
     }
@@ -157,7 +161,7 @@ void bubbleSortOptimized(unsigned long long size, int32_t list[size]){
     while (changed) {
         j = 0;
         changed = false;
-        for (int j = 0; j < end; j++) {
+        for (j = 0; j < end; j++) {
             if (list[j] > list[j + 1]) {
                 swap(&list[0], j, j+1);
                 changed = true;
@@ -220,10 +224,13 @@ void merge(unsigned long long size, int32_t arr[size], int32_t temp[size], int i
 
 void quickSortLast(unsigned long long size, int32_t arr[size], int ini, int fim) {
     int i, j;
-    if (fim - ini < 2)
-        if (fim - ini == 1)
-            if (arr[ini] > arr[fim])
+    if (fim - ini < 2) {
+        if (fim - ini == 1) {
+            if (arr[ini] > arr[fim]) {
                 swap(arr, ini, fim);
+            }
+        }
+    }
     else {
         int pivot = arr[fim];
         i = ini;
@@ -231,7 +238,7 @@ void quickSortLast(unsigned long long size, int32_t arr[size], int ini, int fim)
           while (j >= i) {
             while (arr[i] < pivot)
                 i++;
-            while (arr[j] > pivot)
+            while (arr[j] > pivot && j >= 0)
                 j--;
             if (j >= i) {
                 swap(arr, i, j);
@@ -239,7 +246,6 @@ void quickSortLast(unsigned long long size, int32_t arr[size], int ini, int fim)
                 j--;
             }
         }
-
         swap(arr, i, fim);
         quickSortLast(size, arr, ini, i - 1);
         quickSortLast(size, arr, i + 1, fim);
@@ -270,7 +276,7 @@ void quickSortRandom(unsigned long long size, int32_t arr[size], int ini, int fi
         while (j >= i) {
             while (arr[i] < pivot)
                 i++;
-            while (arr[j] > pivot)
+            while (arr[j] > pivot && j >= 0)
                 j--;
             if (j >= i) {
                 swap(arr, i, j);
@@ -285,18 +291,13 @@ void quickSortRandom(unsigned long long size, int32_t arr[size], int ini, int fi
 }
 
 
-void choosePivot(int32_t arr[], int ini, int fim, int *med) {
-    int middle = (ini + fim) / 2;
-
-    if ((arr[ini] > arr[middle] && arr[ini] < arr[fim]) || (arr[ini] < arr[middle] && arr[ini] > arr[fim]))
-        *med = ini;
-    
-    else if ((arr[fim] > arr[middle] && arr[fim] < arr[ini]) || (arr[fim] < arr[middle] && arr[fim] > arr[ini]))
-        *med = fim;
-    
-    else if ((arr[middle] > arr[ini] && arr[middle] < arr[fim]) || (arr[middle] < arr[ini] && arr[middle] > arr[fim]))
-        *med = middle;
-    
+int choosePivot(int32_t arr[], int a, int b, int c) {
+    if ((arr[a] > arr[b]) ^ (arr[a] > arr[c])) 
+        return a;
+    else if ((arr[b] < arr[a]) ^ (arr[b] < arr[c])) 
+        return b;
+    else
+        return c;
 }
 
 void quickSortMedian(unsigned long long size, int32_t arr[size], int ini, int fim) {
@@ -308,16 +309,15 @@ void quickSortMedian(unsigned long long size, int32_t arr[size], int ini, int fi
             }
         }
     } else {
-        int med;
-        choosePivot(arr, ini, fim, &med);
+        int med = choosePivot(arr, ini, (ini+fim)/2, fim);
         swap(arr, fim, med);
         int32_t pivot = arr[fim];
         i = ini;
         j = fim - 1;
         while (j >= i) {
-            while (arr[i] < pivot)
+            while (arr[i] < pivot && i < j)
                 i++;
-            while (arr[j] > pivot)
+            while (arr[j] > pivot && j >= 0)
                 j--;
             if (j >= i) {
                 swap(arr, i, j);
@@ -331,32 +331,26 @@ void quickSortMedian(unsigned long long size, int32_t arr[size], int ini, int fi
     }
 }
 
-void descer(int arr[], int i, int n) {
-    int j = 2 * i;
-    if (j <= n) {
-        if (j < n) 
-            if(arr[j+1] > arr[j]) j++;
+void descer(int arr[], int i, long long n) {
+    int j = 2 * i;  
+    if (j < n) {
+        if(arr[j+1] > arr[j]) j++;
         if (arr[i] < arr[j]) {
             swap(arr, j, i);
             descer(arr, j, n);
         } 
     }
-
-}
-
-void arranjar (int32_t arr[], unsigned long long n) {
-    for (int i = n/2; i >= 0; i--){
-        descer(arr, i, n);
-    }
 }
 
 // Função principal para ordenar um array usando o Heap Sort
-void heapSort(unsigned long long size, int32_t arr[size]) {
-    arranjar(arr, size);
-    unsigned long long m = size;
+void heapSort(long long size, int32_t arr[size]) {
+    for (int i = size/2; i >= 0; i--){
+        descer(arr, i, size);
+    }
+    long long m = size;
     while (m > 0) {
         swap(arr, 0, m);
         m--;
         descer(arr, 0, m);
     }
-}
+}   
